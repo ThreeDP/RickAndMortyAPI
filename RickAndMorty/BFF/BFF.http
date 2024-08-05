@@ -1,0 +1,6 @@
+@BFF_HostAddress = http://localhost:5197
+
+GET {{BFF_HostAddress}}/getcharacters/
+Accept: application/json
+
+###
