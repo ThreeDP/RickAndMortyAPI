@@ -6,6 +6,7 @@ using FluentValidation;
 using BFF.Validations;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,7 +52,7 @@ app.MapGet("/CharactersByEpisodeName/", async (
     .Where(slice => slice is not null)
     .ToArray();
     var newC = string.Join(",", characterList);
-    var characters = await apiC.GetCharactersByIds2(newC); 
+    var characters = await apiC.GetCharactersByIds2("1,2"); 
     return Results.Ok(new ResponseCharactersOfEpisodeDTO {
         EpisodeName = ep.Name,
         EpisodeCode = ep.Ep,
@@ -59,9 +60,12 @@ app.MapGet("/CharactersByEpisodeName/", async (
         Characters = characters
     });
 })
-.WithName("Pegar Personagens por Ep")
+.WithName("GetCharactersByEpisode")
 .WithOpenApi()
 .Produces<ResponseCharactersOfEpisodeDTO>();
+
+app.MapGet("/", () => "Hello World!");
+
 
 app.MapGet("/Personagens/", async (
     ICharacter c,
@@ -81,4 +85,6 @@ app.MapGet("/Personagens/", async (
 .WithOpenApi()
 .Produces<Characters>();
 
+
 app.Run();
+public partial class Program { }
