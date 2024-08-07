@@ -12,9 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddRefitClient<ICharacter>()
-    .ConfigureHttpClient(c => c.BaseAddress = new Uri("https://rickandmortyapi.com/api/character"));
-builder.Services.AddRefitClient<IEpisode>()
+builder.Services.AddRefitClient<ICharacterGateway>()
+    .ConfigureHttpClient(c => {
+        c.BaseAddress = new Uri("https://rickandmortyapi.com/api/character");
+        c.Timeout = TimeSpan.FromSeconds(5);
+    });
+builder.Services.AddRefitClient<IEpisodeGateway>()
     .ConfigureHttpClient(e => e.BaseAddress = new Uri("https://rickandmortyapi.com/api/episode"));
 builder.Services.AddScoped<IValidator<CharacterFilterDTO>, CharacterFilterValidation>();
 builder.Services.AddScoped<IValidator<EpisodeFilterDTO>, EpisodeFilterValidation>();
@@ -30,8 +33,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapGet("/CharactersByEpisodeName/", async (
-    IEpisode apiEP,
-    ICharacter apiC,
+    IEpisodeGateway apiEP,
+    ICharacterGateway apiC,
     IValidator<EpisodeFilterDTO> validator,
     [AsParameters] EpisodeFilterDTO filter
     ) =>
@@ -52,7 +55,7 @@ app.MapGet("/CharactersByEpisodeName/", async (
     .Where(slice => slice is not null)
     .ToArray();
     var newC = string.Join(",", characterList);
-    var characters = await apiC.GetCharactersByIds2("1,2"); 
+    var characters = await apiC.GetCharactersByIds("1,2"); 
     return Results.Ok(new ResponseCharactersOfEpisodeDTO {
         EpisodeName = ep.Name,
         EpisodeCode = ep.Ep,
@@ -68,18 +71,31 @@ app.MapGet("/", () => "Hello World!");
 
 
 app.MapGet("/Personagens/", async (
-    ICharacter c,
+    ICharacterGateway c,
     IValidator<CharacterFilterDTO> validator,
     [AsParameters] CharacterFilterDTO filter) =>
 {
     var valid = validator.Validate(filter);
     if (valid.IsValid is false) {
-        string allMessages = valid.ToString();
-        return Results.BadRequest(allMessages);
+        return Results.BadRequest(valid.ToString());
     }
-    var res = await c.GetCharacters(filter);
-
-    return Results.Ok(res);
+    Object? res = null;
+    try {
+        res = await c.GetCharacters(filter);
+    }
+    catch (TaskCanceledException)
+    {
+        return Results.Json(new ErrorMessageDTO
+        {
+            Title = "Internal Error",
+            Message = "A internal error in the server."
+        }, statusCode: 500);
+    }
+    catch (ApiException e)
+    {
+        return Results.StatusCode((int)e.StatusCode);
+    }
+    return Results.Ok((Characters?)res);
 })
 .WithName("GetCharacter")
 .WithOpenApi()
