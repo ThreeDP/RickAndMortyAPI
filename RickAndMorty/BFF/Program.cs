@@ -15,7 +15,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddRefitClient<ICharacterGateway>()
     .ConfigureHttpClient(c => {
         c.BaseAddress = new Uri("https://rickandmortyapi.com/api/character");
-        c.Timeout = TimeSpan.FromSeconds(5);
+        c.Timeout = TimeSpan.FromSeconds(1);
     });
 builder.Services.AddRefitClient<IEpisodeGateway>()
     .ConfigureHttpClient(e => e.BaseAddress = new Uri("https://rickandmortyapi.com/api/episode"));
@@ -79,9 +79,9 @@ app.MapGet("/Personagens/", async (
     if (valid.IsValid is false) {
         return Results.BadRequest(valid.ToString());
     }
-    Object? res = null;
     try {
-        res = await c.GetCharacters(filter);
+        var res = await c.GetCharacters(filter);
+        return Results.Ok(res);
     }
     catch (TaskCanceledException)
     {
@@ -95,7 +95,7 @@ app.MapGet("/Personagens/", async (
     {
         return Results.StatusCode((int)e.StatusCode);
     }
-    return Results.Ok((Characters?)res);
+
 })
 .WithName("GetCharacter")
 .WithOpenApi()
